@@ -654,7 +654,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			value.session_id = metrixSessionId.get();
 			value.session_num = metrixSessionId.getSessionNumber();
 			value.event_time = getCurrentTime();
-			let currentTimeMillis = (new Date()).getTime();
+			var currentTimeMillis = (new Date()).getTime();
 			if (eventType != "session_start") {
 				addSessionStartToQueue();
 
@@ -710,8 +710,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 		}
 
 		function getCurrentTime() {
-			let current_datetime = new Date();
-			let formatted_date = current_datetime.getUTCFullYear() + "-" + (current_datetime.getUTCMonth() + 1) + "-" + current_datetime.getUTCDate() + "T" + current_datetime.getUTCHours() + ":" + current_datetime.getUTCMinutes() + ":" + current_datetime.getUTCSeconds() + "." + current_datetime.getUTCMilliseconds() + "Z";
+			var current_datetime = new Date();
+			var formatted_date = current_datetime.getUTCFullYear() + "-" + (current_datetime.getUTCMonth() + 1) + "-" + current_datetime.getUTCDate() + "T" + current_datetime.getUTCHours() + ":" + current_datetime.getUTCMinutes() + ":" + current_datetime.getUTCSeconds() + "." + current_datetime.getUTCMilliseconds() + "Z";
 			return formatted_date;
 
 		}
@@ -1813,8 +1813,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 					http.send(JSON.stringify(values));
 				} else {
-					let initEvent = values[0];
-					let otherEvents = values.slice(1, values.length);
+					var initEvent = values[0];
+					var otherEvents = values.slice(1, values.length);
 					http.addEventListener("readystatechange", function() {
 
 						if (this.readyState == 4) {
@@ -1828,9 +1828,9 @@ if (typeof MetrixAnalytics === 'undefined') {
 									var reciveValue = JSON.parse(this.responseText);
 
 									if ('user_id' in reciveValue) {
-										let userId = reciveValue.user_id;
+										var userId = reciveValue.user_id;
 										clientId.setMetrixId(userId);
-										for (let i = 0; i < otherEvents.length; i++) {
+										for (var i = 0; i < otherEvents.length; i++) {
 											otherEvents[i].user_id = userId;
 
 										}
@@ -1883,10 +1883,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 			addToQueue(value);
 		}
 		MetrixAnalytics.prototype.sendRevenue = function(customName, amount, currency, orderId) {
-			let customMetrics = {
+			var customMetrics = {
 				_revenue: amount
 			};
-			let customAttributes = {
+			var customAttributes = {
 				_currency: currency,
 				_order_id: orderId
 			};
