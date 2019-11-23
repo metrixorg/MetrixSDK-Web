@@ -54,6 +54,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		var uniqueDeviceId = null;
 		var trackerToken = null;
 		var geoInfo = null;
+		var referrer = null;
 		var numberOfTry = 0;
 		var locationPathName = document.location.pathname;
 		var dcurrentTabAjaxState = ajaxState.unused;
@@ -287,6 +288,16 @@ if (typeof MetrixAnalytics === 'undefined') {
 				s4() + '-' + s4() + s4() + s4();
 		};
 
+		Util.getQueryString = function(qs){
+			var pairs = {};
+
+			if (qs.length > 0) {
+				var query = qs.charAt(0) === '?' ? qs.substring(1) : qs;
+				return query;
+			}
+			return null;
+		};
+		
 		Util.parseQueryString = function(qs) {
 			var pairs = {};
 
@@ -664,8 +675,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 			value.install_info = {
 				install_complete_timestamp: currentTimeMillis,
-
-				update_timestamp: currentTimeMillis
+				update_timestamp: currentTimeMillis,
+				referrer_url: referrer
 			};
 			value.sdk_version = "0.1.0";
 
@@ -1519,10 +1530,16 @@ if (typeof MetrixAnalytics === 'undefined') {
 		}
 		MetrixAnalytics.prototype.initialize = function(options) {
 			var self = this;
-			appInfo = options.appInfo;
-			uniqueDeviceId = options.uniqueDeviceId;
+
+			appInfo = {
+				package: document.location.hostname?document.location.hostname:document.location.pathname,
+				code: 1,
+				version: "1.0"
+			};
+			uniqueDeviceId = options.uniqueDeviceId || '' ;
 			trackerToken = options.trackerToken;
 			geoInfo = options.geoInfo;
+			referrer =  Util.getQueryString(document.location.search);
 			this.options = Util.merge({
 				bucket: 'none',
 				trackLinkClicks: true,
@@ -1836,10 +1853,13 @@ if (typeof MetrixAnalytics === 'undefined') {
 										}
 
 									}
-
-									emptyQueue2(otherEvents, sendTime);
 								} catch (e) {}
-
+		
+								if (this.status < 400)
+									metrixQueue.refreshMainQueue();
+								if(otherEvents.length > 0)
+									emptyQueue2(otherEvents, sendTime);
+		
 							} else {
 								console.log('Analytic request Failed with Statuse ', this.status, '.');
 								metrixQueue.relaxQueue();

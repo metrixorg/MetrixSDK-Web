@@ -6,11 +6,6 @@ var _metrix = new MetrixAnalytics({
 	appId: 'zozazzcrpzaptaa',
 	uniqueDeviceId: 'your android ad id',
 	trackerToken: 'rebhyh',
-	appInfo: {
-		package: "ir.metrix.sample.debug",
-		code: 1,
-		version: "1.0"
-	},
 	geoInfo: {
 		country: "Iran",
 		admin_area: "Tehran Province",
@@ -18,7 +13,6 @@ var _metrix = new MetrixAnalytics({
 		latitude: 35.7658549,
 		longitude: 51.4236146
 	}
-
 });
     // Internal (demo) stuff, don't touch!
     var _trackEventBtn = document.querySelector('#track-event');
