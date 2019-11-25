@@ -2,7 +2,7 @@
 ## MetrixSDK Web/PWA 
 <div dir="rtl">
 
-پلاگین وب و PWA sdk متریکس، اطلاعات بیشتر در [متریکس](https://metrix.ir).
+پلاگین وب و PWA کتابخانه متریکس، اطلاعات بیشتر در [متریکس](https://metrix.ir).
   
 
 <h2>راه اندازی</h2>
