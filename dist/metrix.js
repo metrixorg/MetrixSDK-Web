@@ -1536,7 +1536,13 @@ if (typeof MetrixAnalytics === 'undefined') {
 				code: 1,
 				version: "1.0"
 			};
-			uniqueDeviceId = options.uniqueDeviceId || '' ;
+
+			if (typeof options.uniqueDeviceId === 'string' || options.uniqueDeviceId instanceof String){
+				uniqueDeviceId = options.uniqueDeviceId;
+			} else {
+				uniqueDeviceId = '';
+			}
+
 			trackerToken = options.trackerToken;
 			geoInfo = options.geoInfo;
 			referrer =  Util.getQueryString(document.location.search);
