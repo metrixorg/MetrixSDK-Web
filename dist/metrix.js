@@ -1,14 +1,14 @@
-/**
- * Constructs a new MetrixAnalytics
- * @constructor MetrixAnalytics
- * @param options.appId Metrix ApplicationID
- */
-let MetrixAnalytics = function(options) {
-	this.setAppId(options.appId);
-	this.initialize(options);
-};
-
 if (typeof MetrixAnalytics === 'undefined') {
+
+	/**
+	 * Constructs a new MetrixAnalytics
+	 * @constructor MetrixAnalytics
+	 * @param options.appId Metrix ApplicationID
+	 */
+	var MetrixAnalytics = function(options) {
+		this.setAppId(options.appId);
+		this.initialize(options);
+	};
 
 	(function (MetrixAnalytics) {
 		const metrixSettingAndMonitoring = {
@@ -185,7 +185,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				connectionInfo.browser_version = browserPageInfo.browser.version;
 			}
 
-			let ie = detectIE();
+			let ie = Utils.detectIE();
 			if (ie) {
 				connectionInfo.browser_version = ie;
 				if (ie > 11)
