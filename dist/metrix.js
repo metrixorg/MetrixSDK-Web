@@ -551,7 +551,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.getLastVisitTime = function() {
-			return parseInt(localStorage.getItem(localStorageKeys.lastVisitTime));
+			return Number(localStorage.getItem(localStorageKeys.lastVisitTime));
 		};
 
 		metrixSession.resetSessionDuration = function() {
@@ -562,7 +562,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.getSessionDuration = function() {
-			return parseInt(localStorage.getItem(localStorageKeys.sessionDuration));
+			return Number(localStorage.getItem(localStorageKeys.sessionDuration));
 		};
 
 		metrixSession.updateSessionDuration = function() {
