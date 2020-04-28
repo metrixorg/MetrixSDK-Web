@@ -145,7 +145,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		clientId.getMetrixId = function() {
-			localStorage.getItem(localStorageKeys.metrixId);
+			return localStorage.getItem(localStorageKeys.metrixId);
 		};
 
 		let metrixEvent = {};
@@ -177,7 +177,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		metrixEvent.makeBaseEventInfo = function(eventType) {
 			let value = {};
 			metrixSession.generateNewSessionIfExpired();
-			value.user_id = localStorage.getItem(localStorageKeys.metrixId);
+			value.user_id = clientId.getMetrixId();
 			value.session_id = metrixSession.getSessionId();
 			value.session_num = metrixSession.getSessionNumber();
 			value.event_time = Utils.getFormattedCurrentTime();
@@ -476,7 +476,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 									metrixLogger.debug("response received", {"status code": this.status, "response": receivedValue}); 
 
 								} catch (e) {
-									metrixLogger.error("error parsing http response", {"status code": this.status, "response": receivedValue, "error": e}); 
+									metrixLogger.error("error parsing http response", {"status code": this.status, "error": e}); 
 								}
 
 								if (this.status < 400){
@@ -517,7 +517,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 									metrixLogger.debug("response received", {"status code": this.status, "response": receivedValue}); 
 
 								} catch (e) {
-									metrixLogger.error("error parsing http response", {"status code": this.status, "response": receivedValue, "error": e}); 
+									metrixLogger.error("error parsing http response", {"status code": this.status, "error": e}); 
 								}
 
 								if (this.status < 400){
