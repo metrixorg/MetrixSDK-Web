@@ -281,11 +281,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		// TODO: WTF??
-		metrixQueue.breakHeavyQueue = function() {
-			let storedQueue = [];
+		metrixQueue.breakHeavyQueue = function() {			
+			let storedQueue = this.getMainQueue() || [];
 			const eventPriorities = ['session_start', 'session_stop', 'custom'];
-			if (this.getMainQueue() != null)
-				storedQueue = this.getMainQueue();
+			
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
 				this.setMainQueue(JSON.stringify(removeLastSession(storedQueue)));
 
@@ -301,69 +300,65 @@ if (typeof MetrixAnalytics === 'undefined') {
 			}
 		};
 
-		metrixQueue.isQueueEmpty = function() {
-			let storedQueue = [];
-			if (this.getMainQueue() != null)
-				storedQueue = this.getMainQueue();
+		metrixQueue.isQueueNotLargeEnoughToSend = function() {
+			let storedQueue = this.getMainQueue() || [];
 			return storedQueue.length <= metrixSettingAndMonitoring.updateChunkNumber;
 		};
 
-		metrixQueue.relaxQueue = function() {
+		metrixQueue.removeSendingState = function() {
 			localStorage.removeItem(localStorageKeys.sendingQueue);
 			currentTabAjaxState = ajaxState.stop;
 			localStorage.setItem(localStorageKeys.ajaxState, 'stop');
 		};
 
 		metrixQueue.isGoodTimeToSendData = function() {
+
 			let lastSendTime = this.getLastDataSendTime();
+
 			if (lastSendTime != null) {
 				let diff = Utils.getCurrentTime() - lastSendTime;
-				if (diff < metrixSettingAndMonitoring.queueUnloadInterval && this.isQueueEmpty())
+				if (diff < metrixSettingAndMonitoring.queueUnloadInterval && this.isQueueNotLargeEnoughToSend()){
 					return false;
+				}
 
 				// In some cases, (for example when the app is force-stopped), ajax state resets
 				let lastSendTryTime = this.getLastDataSendTryTime();
 				if (lastSendTryTime != null) {
 					let diffTry = Utils.getCurrentTime() - lastSendTryTime;
 					if (diffTry > 3 * metrixSettingAndMonitoring.timeOut + metrixSettingAndMonitoring.queueUnloadInterval) {
-						this.relaxQueue();
+						this.removeSendingState();
 						numberOfTries = 0;
 					}
 				} else {
-					this.relaxQueue();
+					this.removeSendingState();
 					numberOfTries = 0;
-					this.setLastDataSendTryTime();
 				}
 			}
-			return localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.start.toString();
+			
+			let result = localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.start.toString();
+			return result;
 		};
 
-		metrixQueue.refreshMainQueue = function() {
-			let storedQueue = [];
-			let storedSendingQueue = [];
-
-			if (localStorage.getItem(localStorageKeys.sendingQueue) != null)
-				storedSendingQueue = JSON.parse(localStorage.getItem(localStorageKeys.sendingQueue));
-			if (localStorage.getItem(localStorageKeys.mainQueue) != null)
-				storedQueue = JSON.parse(localStorage.getItem(localStorageKeys.mainQueue));
+		metrixQueue.refreshQueues = function() {
+			let storedQueue = this.getMainQueue() || [];
+			let storedSendingQueue = this.getSendingQueue() || [];
 
 			storedQueue.splice(0, storedSendingQueue.length);
-			localStorage.removeItem(localStorageKeys.sendingQueue);
-			if (storedQueue.length === 0)
+			if (storedQueue.length === 0) {
 				localStorage.removeItem(localStorageKeys.mainQueue);
-			else
-				localStorage.setItem(localStorageKeys.mainQueue, JSON.stringify(storedQueue));
+			}
+			else {
+				this.setMainQueue(JSON.stringify(storedQueue));
+			}
 
-			currentTabAjaxState = ajaxState.stop;
-			localStorage.setItem(localStorageKeys.ajaxState, ajaxState.stop);
+			this.removeSendingState();
 
-			if (this.isQueueEmpty() === false)
-				emptyQueue();
+			if (this.isQueueNotLargeEnoughToSend() === false)
+				initDataSending();
 		};
 
 		metrixQueue.updateSendingQueue = function() {
-			let storedQueue = metrixQueue.getMainQueue();
-			if (storedQueue == null) storedQueue = [];
+			let storedQueue = metrixQueue.getMainQueue() || [];
 			metrixQueue.setSendingQueue(JSON.stringify(storedQueue.slice(0, metrixSettingAndMonitoring.updateChunkNumber)));
 		};
 
@@ -372,8 +367,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				return;
 			}
 			if (MetrixAppId != null) {
-				let storedQueue = metrixQueue.getMainQueue();
-				if (storedQueue == null) storedQueue = [];
+				let storedQueue = metrixQueue.getMainQueue() || [];
 				storedQueue.push(value);
 				metrixQueue.setMainQueue(JSON.stringify(storedQueue));
 
@@ -381,12 +375,13 @@ if (typeof MetrixAnalytics === 'undefined') {
 				metrixQueue.breakHeavyQueue();
 
 				// If no ack is received, no data will be sent, which is checked with the length of sendingQueue.
-				if (metrixQueue.isQueueEmpty() === false && metrixQueue.getSendingQueue() == null)
-					emptyQueue();
+				if (metrixQueue.isQueueNotLargeEnoughToSend() === false && metrixQueue.getSendingQueue() == null)
+					initDataSending();
 			}
 		}
 
-		function emptyQueue() {
+		// This function is called before attempting to send data to set time, check numberOfTries and set SendingQueue
+		function initDataSending() {
 			if (metrixQueue.getMainQueue() != null && metrixQueue.isGoodTimeToSendData()) {
 				metrixQueue.setLastDataSendTryTime();
 				if (numberOfTries < 3) {
@@ -395,14 +390,14 @@ if (typeof MetrixAnalytics === 'undefined') {
 					currentTabAjaxState = ajaxState.start;
 					metrixQueue.updateSendingQueue();
 					let sendTime = Utils.getCurrentTime();
-					emptyQueue2(metrixQueue.getSendingQueue(), sendTime)
+					attemptDataSending(metrixQueue.getSendingQueue(), sendTime)
 				} else {
 					numberOfTries = 0;
 				}
 			}
 		}
 
-		function emptyQueue2(values, sendTime) {
+		function attemptDataSending(values, sendTime) {
 			let http = new XMLHttpRequest();
 			let metrixId = clientId.getMetrixId();
 			if (metrixId) {
@@ -431,12 +426,12 @@ if (typeof MetrixAnalytics === 'undefined') {
 								} catch (e) {}
 
 								if (this.status < 400)
-									metrixQueue.refreshMainQueue();
+									metrixQueue.refreshQueues();
 
 							} else {
 								console.log('Analytic request Failed with Status ', this.status, '.');
-								metrixQueue.relaxQueue();
-								emptyQueue();
+								metrixQueue.removeSendingState();
+								initDataSending();
 							}
 						}
 					});
@@ -463,14 +458,14 @@ if (typeof MetrixAnalytics === 'undefined') {
 								} catch (e) {}
 
 								if (this.status < 400)
-									metrixQueue.refreshMainQueue();
+									metrixQueue.refreshQueues();
 								if (otherEvents.length > 0)
-									emptyQueue2(otherEvents, sendTime);
+									attemptDataSending(otherEvents, sendTime);
 
 							} else {
 								console.log('Analytic request Failed with Status ', this.status, '.');
-								metrixQueue.relaxQueue();
-								emptyQueue();
+								metrixQueue.removeSendingState();
+								initDataSending();
 							}
 						}
 					});
@@ -609,8 +604,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		window.addEventListener("beforeunload", function() {
 			metrixSession.updateSessionDuration();
 			if (currentTabAjaxState !== ajaxState.unused) {
-				localStorage.setItem(localStorageKeys.ajaxState, 'stop');
-				localStorage.removeItem(localStorageKeys.sendingQueue);
+				metrixQueue.removeSendingState();
 			}
 		}, false);
 
