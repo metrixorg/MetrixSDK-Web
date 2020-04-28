@@ -673,8 +673,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 			// }
 			metrixSession.resetSessionDuration();
 			addToQueue(metrixEvent.sessionStart());
-
-			return this.getSessionId();
 		};
 
 		function retrieveBrowserData() {
