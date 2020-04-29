@@ -55,7 +55,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 			lastVisitTime: 'METRIX_LAST_VISIT_TIME',
 			sessionDuration: 'METRIX_SESSION_DURATION',
 			referrerPath: 'METRIX_REFERRER_PATH',
-			userId: 'METRIX_USER_ID',
 			sessionNumber: 'METRIX_SESSION_NUMBER',
 			sessionId: 'METRIX_SESSION_ID',
 			sessionIdLastReadTime: 'METRIX_LAST_SESSION_ID_READ_TIME',
