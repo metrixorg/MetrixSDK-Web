@@ -468,16 +468,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 								numberOfTries = 0;
 								// Update the time of data sending -> is used in isGoodTimeToSendData function
 								metrixQueue.setLastDataSendTime(sendTime);
-								try {
-									let receivedValue = JSON.parse(this.responseText);
-									if ('user_id' in receivedValue) {
-										clientId.setMetrixId(receivedValue.user_id);
-									}
-									metrixLogger.debug("response received", {"status code": this.status, "response": receivedValue}); 
-
-								} catch (e) {
-									metrixLogger.error("error parsing http response", {"status code": this.status, "error": e}); 
-								}
 
 								if (this.status < 400){
 									metrixLogger.debug("calling to refresh queues"); 
