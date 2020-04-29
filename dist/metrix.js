@@ -262,9 +262,9 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setMainQueue = function(newQueue) {
-			metrixLogger.debug("ّsetting mainQueue", {"new queue": JSON.parse(newQueue)}); 
+			metrixLogger.debug("ّsetting mainQueue", {"new queue": newQueue}); 
 
-			localStorage.setItem(localStorageKeys.mainQueue, newQueue);
+			localStorage.setItem(localStorageKeys.mainQueue, JSON.stringify(newQueue));
 		};
 
 		metrixQueue.getSendingQueue = function() {
@@ -272,9 +272,9 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setSendingQueue = function(newQueue) {
-			metrixLogger.debug("ّsetting sendingQueue", {"new queue": JSON.parse(newQueue)}); 
+			metrixLogger.debug("ّsetting sendingQueue", {"new queue": newQueue}); 
 
-			localStorage.setItem(localStorageKeys.sendingQueue, newQueue);
+			localStorage.setItem(localStorageKeys.sendingQueue, JSON.stringify(newQueue));
 		};
 
 		metrixQueue.getLastDataSendTime = function() {
@@ -314,7 +314,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			metrixLogger.debug("ّbreakHeavyQueue was called", {"current queue": storedQueue}); 
 
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
-				this.setMainQueue(JSON.stringify(removeLastSession(storedQueue)));
+				this.setMainQueue(removeLastSession(storedQueue));
 			else {
 				metrixLogger.debug("ّmain queue was not large enough to break"); 
 			}
@@ -386,7 +386,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				localStorage.removeItem(localStorageKeys.mainQueue);
 			}
 			else {
-				this.setMainQueue(JSON.stringify(storedQueue));
+				this.setMainQueue(storedQueue);
 			}
 
 			this.removeSendingState();
@@ -397,7 +397,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixQueue.updateSendingQueue = function() {
 			let storedQueue = metrixQueue.getMainQueue() || [];
-			metrixQueue.setSendingQueue(JSON.stringify(storedQueue.slice(0, metrixSettingAndMonitoring.updateChunkNumber)));
+			metrixQueue.setSendingQueue(storedQueue.slice(0, metrixSettingAndMonitoring.updateChunkNumber));
 		};
 
 		function addToQueue(value) {
@@ -409,7 +409,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			if (MetrixAppId != null) {
 				let storedQueue = metrixQueue.getMainQueue() || [];
 				storedQueue.push(value);
-				metrixQueue.setMainQueue(JSON.stringify(storedQueue));
+				metrixQueue.setMainQueue(storedQueue);
 				
 				metrixLogger.info("new Event was added to main queue", {"value": value}); 
 
