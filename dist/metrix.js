@@ -1068,6 +1068,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 			}
 		}
 
+		var myTimerVar = setInterval(initDataSending, metrixSettingAndMonitoring.queueUnloadInterval);
+
 		return MetrixAnalytics;
 	})(MetrixAnalytics);
 }
