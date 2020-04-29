@@ -138,7 +138,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let clientId = {};
 
 		clientId.setMetrixId = function(value) {
-			metrixLogger.debug("ّsetting metrix id", value); 
+			metrixLogger.debug("ّsetting metrix id", {"id": value}); 
 
 			localStorage.setItem(localStorageKeys.metrixId, value);
 		};
@@ -262,7 +262,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setMainQueue = function(newQueue) {
-			metrixLogger.debug("ّsetting mainQueue", newQueue); 
+			metrixLogger.debug("ّsetting mainQueue", {"new queue": JSON.parse(newQueue)}); 
 
 			localStorage.setItem(localStorageKeys.mainQueue, newQueue);
 		};
@@ -272,7 +272,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setSendingQueue = function(newQueue) {
-			metrixLogger.debug("ّsetting sendingQueue", newQueue); 
+			metrixLogger.debug("ّsetting sendingQueue", {"new queue": JSON.parse(newQueue)}); 
 
 			localStorage.setItem(localStorageKeys.sendingQueue, newQueue);
 		};
@@ -286,7 +286,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setLastDataSendTime = function(time) {
-			metrixLogger.debug("ّsetting lastDataSendTime", time); 
+			metrixLogger.debug("ّsetting lastDataSendTime", {"time": time}); 
 
 			localStorage.setItem(localStorageKeys.lastDataSendTime, time);
 		};
@@ -301,7 +301,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixQueue.setLastDataSendTryTime = function() {
 			let time = Utils.getCurrentTime();
-			metrixLogger.debug("ّsetting lastDataSendTryTime", time); 
+			metrixLogger.debug("ّsetting lastDataSendTryTime", {"time": time}); 
 
 			localStorage.setItem(localStorageKeys.lastDataSendTryTime, time);
 		};
@@ -311,7 +311,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			let storedQueue = this.getMainQueue() || [];
 			const eventPriorities = ['session_start', 'session_stop', 'custom'];
 			
-			metrixLogger.debug("ّbreakHeavyQueue was called", storedQueue); 
+			metrixLogger.debug("ّbreakHeavyQueue was called", {"current queue": storedQueue}); 
 
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
 				this.setMainQueue(JSON.stringify(removeLastSession(storedQueue)));
@@ -401,7 +401,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		function addToQueue(value) {
-			metrixLogger.debug("addToQueue was called", value); 
+			metrixLogger.debug("addToQueue was called", {"value": value}); 
 
 			if (value.session_num < 0) {
 				return;
@@ -411,7 +411,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				storedQueue.push(value);
 				metrixQueue.setMainQueue(JSON.stringify(storedQueue));
 				
-				metrixLogger.info("new Event was added to main queue", value); 
+				metrixLogger.info("new Event was added to main queue", {"value": value}); 
 
 				// If our queue is larger than the queueCapacity, it's oldest items will be removed
 				metrixQueue.breakHeavyQueue();
@@ -617,7 +617,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		metrixSession.setDocumentReferrer = function() {
 			localStorage.setItem(localStorageKeys.referrerPath, document.referrer);
 
-			metrixLogger.debug("document referrer was set to " + document.referrer);
+			metrixLogger.debug("document referrer was set" + {"value": document.referrer});
 		};
 
 		metrixSession.referrerHasNotChanged = function() {
@@ -1031,39 +1031,39 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		let metrixLogger = {};
 
-		metrixLogger.log = function(message, ...optionalParams) {
+		metrixLogger.log = function(message, obj = {}) {
 			if (logEnabled) {
-				console.log(message, optionalParams);
+				console.log(message, obj);
 			}
 		}
 
-		metrixLogger.info = function(message, ...optionalParams) {
+		metrixLogger.info = function(message, obj = {}) {
 			if (logEnabled) {
-				console.info(message, optionalParams);
+				console.info(message, obj);
 			}
 		}
 
-		metrixLogger.debug = function(message, ...optionalParams) {
+		metrixLogger.debug = function(message, obj = {}) {
 			if (logEnabled) {
-				console.debug(message, optionalParams);
+				console.debug(message, obj);
 			}
 		}
 
-		metrixLogger.warn = function(message, ...optionalParams) {
+		metrixLogger.warn = function(message, obj = {}) {
 			if (logEnabled) {
-				console.warn(message, optionalParams);
+				console.warn(message, obj);
 			}
 		}
 
-		metrixLogger.error = function(message, ...optionalParams) {
+		metrixLogger.error = function(message, obj = {}) {
 			if (logEnabled) {
-				console.error(message, optionalParams);
+				console.error(message, obj);
 			}
 		}
 
-		metrixLogger.trace = function(message, ...optionalParams) {
+		metrixLogger.trace = function(message, obj = {}) {
 			if (logEnabled) {
-				console.trace(message, optionalParams);
+				console.trace(message, obj);
 			}
 		}
 
