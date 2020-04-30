@@ -18,7 +18,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			queueUnloadInterval: 10000,
 			sessionExpirationTime: 60000,
 			updateChunkNumber: 15,
-			localQueueCapacity: 200
+			localQueueCapacity: 300
 		};
 
 		const ajaxState = {
@@ -74,7 +74,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		 * not need to be called manually.
 		 */
 		MetrixAnalytics.prototype.initialize = function(options) {
-			
+
 			appInfo = {
 				package: document.location.hostname ? document.location.hostname : document.location.pathname,
 				// TODO: get these values from the user
@@ -306,27 +306,34 @@ if (typeof MetrixAnalytics === 'undefined') {
 			localStorage.setItem(localStorageKeys.lastDataSendTryTime, time);
 		};
 
-		// TODO: WTF??
-		metrixQueue.breakHeavyQueue = function() {			
+		metrixQueue.breakHeavyQueue = function() {
 			let storedQueue = this.getMainQueue() || [];
-			const eventPriorities = ['session_start', 'session_stop', 'custom'];
-			
+			const eventPriorities = ['custom', 'session_start', 'session_stop'];
+
 			metrixLogger.debug("breakHeavyQueue was called", {"current queue": storedQueue});
 
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
-				this.setMainQueue(removeLastSession(storedQueue));
+				this.setMainQueue(refineQueue(storedQueue));
 			else {
 				metrixLogger.debug("main queue was not large enough to break");
 			}
 
-			function removeLastSession(inputQueue) {
+			function refineQueue(inputQueue) {
 				let newQueue = [];
-				let i, len;
-				for (i = 0, len = inputQueue.length; i < len; ++i) {
-					let event = inputQueue[i];
-					if (eventPriorities.indexOf(event.event_type) !== -1)
-						newQueue.push(event);
+				let initialIndex = 0;
+				if (!clientId.getMetrixId()) {
+					newQueue.push(inputQueue[0]);
+					initialIndex = 1;
 				}
+				eventPriorities.forEach(function (type) {
+					let i = initialIndex;
+					while (i < inputQueue.length && newQueue.length < metrixSettingAndMonitoring.localQueueCapacity) {
+						if (inputQueue[i].event_type === type) {
+							newQueue.push(inputQueue[i]);
+						}
+						i++;
+					}
+				});
 				return newQueue;
 			}
 		};
