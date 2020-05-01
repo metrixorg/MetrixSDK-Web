@@ -40,7 +40,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let lastSessionId = null;
 		let lastSessionNumber = null;
 		let browserPageInfo = null;
-		// TODO: get this value from user
 		let logEnabled = true;
 
 		const requestHeaders = {
@@ -65,7 +64,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		MetrixAnalytics.prototype.setAppId = function(id) {
-			metrixLogger.info("Setting metrix AppID", {"appID": id});
 			MetrixAppId = id;
 		};
 
@@ -92,12 +90,17 @@ if (typeof MetrixAnalytics === 'undefined') {
 			geoInfo = options.geoInfo;
 			referrer = Utils.getQueryString(document.location.search);
 
-			metrixLogger.info("Initializing Metrix SDK",
-					{"appInfo": appInfo,
-					 "uniqueDeviceId": uniqueDeviceId,
-					 "trackerToken": trackerToken,
-					 "geoInfo": geoInfo,
-					 "referrer": referrer});
+			if (options.disableLogs) {
+				logEnabled = false
+			}
+
+			metrixLogger.info("Initializing Metrix SDK",{
+				"appInfo": appInfo,
+				"uniqueDeviceId": uniqueDeviceId,
+				"trackerToken": trackerToken,
+				"geoInfo": geoInfo,
+				"referrer": referrer
+			});
 
 			// Always assume that Javascript is the culprit of leaving the page
 			// (we'll detect and intercept clicks on links and buttons as best
@@ -107,14 +110,11 @@ if (typeof MetrixAnalytics === 'undefined') {
 			Utils.onDomLoaded(function() {
 				retrieveBrowserData();
 				metrixSession.updateLastVisitTime();
-				metrixLogger.debug("calling to generate new session from initialize");
 				metrixSession.generateNewSessionIfExpired();
 			});
 		};
 
 		MetrixAnalytics.prototype.sendCustomTrack = function(customName, customAttributes, customMetrics) {
-			metrixLogger.debug("sendCustomTrack was called");
-
 			customMetrics = customMetrics || {};
 			customAttributes = customAttributes || {};
 			let value = metrixEvent.manualTrack(customAttributes, customMetrics, customName);
@@ -122,8 +122,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		MetrixAnalytics.prototype.sendRevenue = function(customName, amount, currency, orderId) {
-			metrixLogger.debug("sendRevenue was called");
-
 			let customMetrics = {
 				_revenue: amount
 			};
@@ -138,8 +136,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let clientId = {};
 
 		clientId.setMetrixId = function(value) {
-			metrixLogger.debug("setting metrix id", {"id": value});
-
 			localStorage.setItem(localStorageKeys.metrixId, value);
 		};
 
@@ -264,8 +260,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setMainQueue = function(newQueue) {
-			metrixLogger.debug("setting mainQueue", {"new queue": newQueue});
-
 			localStorage.setItem(localStorageKeys.mainQueue, JSON.stringify(newQueue));
 		};
 
@@ -274,8 +268,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setSendingQueue = function(newQueue) {
-			metrixLogger.debug("setting sendingQueue", {"new queue": newQueue});
-
 			localStorage.setItem(localStorageKeys.sendingQueue, JSON.stringify(newQueue));
 		};
 
@@ -300,8 +292,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setLastDataSendTime = function(time) {
-			metrixLogger.debug("setting lastDataSendTime", {"time": time});
-
 			localStorage.setItem(localStorageKeys.lastDataSendTime, time);
 		};
 
@@ -315,8 +305,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixQueue.setLastDataSendTryTime = function() {
 			let time = Utils.getCurrentTime();
-			metrixLogger.debug("setting lastDataSendTryTime", {"time": time});
-
 			localStorage.setItem(localStorageKeys.lastDataSendTryTime, time);
 		};
 
@@ -324,13 +312,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 			let storedQueue = this.getMainQueue() || [];
 			const eventPriorities = ['custom', 'session_start', 'session_stop'];
 
-			metrixLogger.debug("breakHeavyQueue was called", {"current queue": storedQueue});
-
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
 				this.setMainQueue(refineQueue(storedQueue));
-			else {
-				metrixLogger.debug("main queue was not large enough to break");
-			}
 
 			function refineQueue(inputQueue) {
 				let newQueue = [];
@@ -358,8 +341,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.removeSendingState = function() {
-			metrixLogger.debug("removing sending queue");
-
 			localStorage.removeItem(localStorageKeys.sendingQueue);
 			currentTabAjaxState = ajaxState.stop;
 			localStorage.setItem(localStorageKeys.ajaxState, 'stop');
@@ -371,12 +352,9 @@ if (typeof MetrixAnalytics === 'undefined') {
 		// * ajax state
 		metrixQueue.shouldAttemptSending = function() {
 			let lastSendTime = this.getLastDataSendTime();
-			metrixLogger.debug("checking for right time to send data", {'lastSendTime': lastSendTime, "numberOfTries": numberOfTries});
-
 			if (lastSendTime != null) {
 				let diff = Utils.getCurrentTime() - lastSendTime;
 				if (diff < metrixSettingAndMonitoring.queueUnloadInterval && this.isQueueNotLargeEnoughToSend()){
-					metrixLogger.debug("returning false", {'time since lastSendTime': diff});
 					return false;
 				}
 
@@ -395,16 +373,12 @@ if (typeof MetrixAnalytics === 'undefined') {
 				}
 			}
 
-			let result = localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.start.toString();
-			metrixLogger.debug("returning " + result, {"numberOfTries": numberOfTries});
-			return result;
+			return localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.start.toString();
 		};
 
 		metrixQueue.refreshMainQueue = function() {
 			let storedQueue = this.getMainQueue() || [];
 			let storedSendingQueue = this.getSendingQueue() || [];
-
-			metrixLogger.debug("refreshing the queues", {"oldMainQueue": storedQueue, "oldSendingQueue": storedSendingQueue});
 
 			if (storedSendingQueue instanceof Array) {
 				storedQueue.splice(0, storedSendingQueue.length);
@@ -417,7 +391,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 			else {
 				this.setMainQueue(storedQueue);
 			}
-			metrixLogger.debug("refreshed the main queue", {"mainQueue": this.getMainQueue()});
 		};
 
 		metrixQueue.updateSendingQueue = function() {
@@ -437,8 +410,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		function addToQueue(value) {
-			metrixLogger.debug("addToQueue was called", {"value": value});
-
 			// this check is necessary not to add a "session_end" event before adding the very first "session_start"
 			if (value.session_num < 0) {
 				return;
@@ -449,20 +420,16 @@ if (typeof MetrixAnalytics === 'undefined') {
 				storedQueue.push(value);
 				metrixQueue.setMainQueue(storedQueue);
 
-				metrixLogger.info("new Event was added to main queue", {"value": value});
+				metrixLogger.info("Metrix, A new Event was added to main queue", {"type": value.event_type});
 
 				// If our queue is larger than the queueCapacity, the items with lower priority will be removed
 				metrixQueue.breakHeavyQueue();
-			} else {
-				// TODO: add a log here
 			}
 		}
 
 		// This function is called before attempting to send data in order to check numberOfTries
 		// and set SendingQueue if an attempt should be made
 		function initDataSending() {
-			metrixLogger.debug("initDataSending was called", {"numberOfTries": numberOfTries});
-
 			if (metrixQueue.getMainQueue() != null && metrixQueue.shouldAttemptSending()) {
 				metrixQueue.setLastDataSendTryTime();
 				if (numberOfTries < 3) {
@@ -482,13 +449,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		function attemptDataSending(values) {
 			let http = new XMLHttpRequest();
 			let metrixId = clientId.getMetrixId();
-
-			metrixLogger.info("attemptDataSending called",
-				{
-					"metrixId": metrixId,
-					"session number": metrixSession.getSessionNumber(),
-					"values": values
-				});
 
 			if (metrixId) {
 				http.open("POST", metrixSettingAndMonitoring.urlEvents, true);
@@ -545,7 +505,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let metrixSession = {};
 
 		metrixSession.generateNewSession = function() {
-			metrixLogger.debug("generating a new session...");
+			metrixLogger.info("Metrix, Generating a new session...");
 
 			this.incrementSessionNumber();
 
@@ -565,8 +525,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.updateLastVisitTime = function() {
-			metrixLogger.debug("updating lastVisitTime");
-
 			localStorage.setItem(localStorageKeys.lastVisitTime, Utils.getCurrentTime());
 		};
 
@@ -575,8 +533,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.resetSessionDuration = function() {
-			metrixLogger.debug("reseting session duration");
-
 			localStorage.setItem(localStorageKeys.sessionDuration, "0");
 			this.updateLastVisitTime();
 		};
@@ -589,8 +545,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 			let addedTime = Utils.getCurrentTime() - this.getLastVisitTime();
 			let newDuration = this.getSessionDuration() + addedTime;
 
-			metrixLogger.debug("updating session duration", {"new duration": newDuration});
-
 			localStorage.setItem(localStorageKeys.sessionDuration, newDuration.toString());
 		};
 
@@ -601,8 +555,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.setSessionIdLastReadTime = function() {
-			metrixLogger.debug("setting sessionIdLastReadTime");
-
 			localStorage.setItem(localStorageKeys.sessionIdLastReadTime, Utils.getCurrentTime().toString());
 		};
 
@@ -617,8 +569,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 		metrixSession.renewSessionId = function() {
 			let newSessionId = Utils.genGuid();
 			localStorage.setItem(localStorageKeys.sessionId, newSessionId);
-
-			metrixLogger.debug("sessionID was renewed", {"new sessionID": newSessionId});
 		};
 
 		metrixSession.getSessionNumber = function() {
@@ -633,10 +583,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 				let count = this.getSessionNumber();
 				count += 1;
 				localStorage.setItem(localStorageKeys.sessionNumber, count.toString());
-				metrixLogger.debug("session number was set to " + count);
 			} else {
 				localStorage.setItem(localStorageKeys.sessionNumber, '0');
-				metrixLogger.debug("session number was set to 0");
 			}
 		};
 
@@ -646,8 +594,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixSession.setDocumentReferrer = function() {
 			localStorage.setItem(localStorageKeys.referrerPath, document.referrer);
-
-			metrixLogger.debug("document referrer was set" + {"value": document.referrer});
 		};
 
 		metrixSession.referrerHasNotChanged = function() {
@@ -663,13 +609,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 			 * 2. The hostname of current page referrer was not equal to the host name of first-page referrer or page hostname.
 			 */
 
-			metrixLogger.debug("generateNewSessionIfExpired called", {"session number": metrixSession.getSessionNumber()});
-
 			if (this.sessionIdHasBeenRead() && this.getSessionId() != null && metrixSession.referrerHasNotChanged()) {
 				let timeSinceLastEvent = Utils.getCurrentTime() - this.getSessionIdLastReadTime();
 				if (timeSinceLastEvent < metrixSettingAndMonitoring.sessionExpirationTime) {
 					this.setSessionIdLastReadTime();
-					metrixLogger.debug("session not expired");
 					return;
 				}
 			}
@@ -684,17 +627,14 @@ if (typeof MetrixAnalytics === 'undefined') {
 		}
 
 		window.addEventListener('blur', function() {
-			metrixLogger.debug("'blur' event was detected. calling to update session duration");
 			metrixSession.updateSessionDuration();
 		});
 
 		window.addEventListener('focus', function() {
-			metrixLogger.debug("'focus' event was detected. calling to update lastVisitTime");
 			metrixSession.updateLastVisitTime();
 		});
 
 		window.addEventListener("beforeunload", function() {
-			metrixLogger.debug("'beforeunload' event was detected. calling to update session duration");
 			metrixSession.updateSessionDuration();
 			if (currentTabAjaxState !== ajaxState.unused) {
 				metrixQueue.removeSendingState();
