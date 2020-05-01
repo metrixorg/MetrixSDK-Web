@@ -175,7 +175,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixEvent.makeBaseEventInfo = function(eventType) {
 			let value = {};
-			metrixSession.generateNewSessionIfExpired();
+
 			value.user_id = clientId.getMetrixId();
 			value.session_id = metrixSession.getSessionId();
 			value.session_num = metrixSession.getSessionNumber();
@@ -245,6 +245,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixEvent.manualTrack = function(customAttributes, customMetrics, customName) {
+			metrixSession.generateNewSessionIfExpired();
+
 			let value = metrixEvent.makeBaseEventInfo("custom");
 
 			value.event_type = 'custom';
@@ -542,6 +544,26 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		let metrixSession = {};
 
+		metrixSession.generateNewSession = function() {
+			metrixLogger.debug("generating a new session...");
+
+			this.incrementSessionNumber();
+
+			lastSessionNumber = this.getSessionNumber() - 1;
+			lastSessionId = this.getSessionId();
+
+			this.setSessionIdLastReadTime();
+			this.renewSessionId();
+			this.setDocumentReferrer();
+
+			if (lastSessionNumber >= 0) {
+				metrixSession.updateSessionDuration();
+				addToQueue(metrixEvent.sessionStop());
+			}
+			metrixSession.resetSessionDuration();
+			addToQueue(metrixEvent.sessionStart());
+		};
+
 		metrixSession.updateLastVisitTime = function() {
 			metrixLogger.debug("updating lastVisitTime");
 
@@ -612,7 +634,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 				count += 1;
 				localStorage.setItem(localStorageKeys.sessionNumber, count.toString());
 				metrixLogger.debug("session number was set to " + count);
-
 			} else {
 				localStorage.setItem(localStorageKeys.sessionNumber, '0');
 				metrixLogger.debug("session number was set to 0");
@@ -654,24 +675,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			}
 
 			// If we are here, new session should be generated
-			metrixLogger.debug("new session should be generated. generating...");
-
-			this.incrementSessionNumber();
-
-			lastSessionNumber = this.getSessionNumber() - 1;
-			lastSessionId = this.getSessionId();
-
-			this.setSessionIdLastReadTime();
-			this.renewSessionId();
-			this.setDocumentReferrer();
-
-			// TODO: check whether this if statement is actually necessary
-			// if (lastSessionNumber) {
-			metrixSession.updateSessionDuration();
-			addToQueue(metrixEvent.sessionStop());
-			// }
-			metrixSession.resetSessionDuration();
-			addToQueue(metrixEvent.sessionStart());
+			metrixSession.generateNewSession();
 		};
 
 		function retrieveBrowserData() {
