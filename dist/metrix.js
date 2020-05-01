@@ -351,8 +351,11 @@ if (typeof MetrixAnalytics === 'undefined') {
 			localStorage.setItem(localStorageKeys.ajaxState, 'stop');
 		};
 
-		metrixQueue.isGoodTimeToSendData = function() {
-
+		// Three factors are considered:
+		// * the time of last successful attempt
+		// * size of queue
+		// * ajax state
+		metrixQueue.shouldAttemptSending = function() {
 			let lastSendTime = this.getLastDataSendTime();
 			metrixLogger.debug("checking for right time to send data", {'lastSendTime': lastSendTime, "numberOfTries": numberOfTries});
 
@@ -363,7 +366,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 					return false;
 				}
 
-				// In some cases, (for example when the app is force-stopped), ajax state resets
+				// in some cases, (for example when the app is force-stopped), ajax state does not reset
+				// here we reset sending state if needed
 				let lastSendTryTime = this.getLastDataSendTryTime();
 				if (lastSendTryTime != null) {
 					let diffTry = Utils.getCurrentTime() - lastSendTryTime;
@@ -382,37 +386,50 @@ if (typeof MetrixAnalytics === 'undefined') {
 			return result;
 		};
 
-		metrixQueue.refreshQueues = function() {
+		metrixQueue.refreshMainQueue = function() {
 			let storedQueue = this.getMainQueue() || [];
 			let storedSendingQueue = this.getSendingQueue() || [];
 
 			metrixLogger.debug("refreshing the queues", {"oldMainQueue": storedQueue, "oldSendingQueue": storedSendingQueue});
 
-			storedQueue.splice(0, storedSendingQueue.length);
+			if (storedSendingQueue instanceof Array) {
+				storedQueue.splice(0, storedSendingQueue.length);
+			} else {
+				storedQueue.shift()
+			}
 			if (storedQueue.length === 0) {
 				localStorage.removeItem(localStorageKeys.mainQueue);
 			}
 			else {
 				this.setMainQueue(storedQueue);
 			}
-
-			this.removeSendingState();
-
-			if (this.isQueueNotLargeEnoughToSend() === false)
-				initDataSending();
+			metrixLogger.debug("refreshed the main queue", {"mainQueue": this.getMainQueue()});
 		};
 
 		metrixQueue.updateSendingQueue = function() {
 			let storedQueue = metrixQueue.getMainQueue() || [];
-			metrixQueue.setSendingQueue(storedQueue.slice(0, metrixSettingAndMonitoring.updateChunkNumber));
+			if (!clientId.getMetrixId()) {
+				let firstSessionStartEvent = storedQueue[0];
+
+				// this should never happen
+				if (!firstSessionStartEvent || firstSessionStartEvent.event_type !== "session_start" || firstSessionStartEvent.session_num !== 0) {
+					console.error("Metrix: Invalid event as the starting event found in the queue. Metrix will be reset. Please report this", {"event": firstSessionStartEvent});
+				}
+
+				metrixQueue.setSendingQueue(firstSessionStartEvent);
+			} else {
+				metrixQueue.setSendingQueue(storedQueue.slice(0, metrixSettingAndMonitoring.updateChunkNumber));
+			}
 		};
 
 		function addToQueue(value) {
 			metrixLogger.debug("addToQueue was called", {"value": value});
 
+			// this check is necessary not to add a "session_end" event before adding the very first "session_start"
 			if (value.session_num < 0) {
 				return;
 			}
+
 			if (MetrixAppId != null) {
 				let storedQueue = metrixQueue.getMainQueue() || [];
 				storedQueue.push(value);
@@ -420,39 +437,44 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 				metrixLogger.info("new Event was added to main queue", {"value": value});
 
-				// If our queue is larger than the queueCapacity, it's oldest items will be removed
+				// If our queue is larger than the queueCapacity, the items with lower priority will be removed
 				metrixQueue.breakHeavyQueue();
-
-				// If no ack is received, no data will be sent, which is checked with the length of sendingQueue.
-				if (metrixQueue.isQueueNotLargeEnoughToSend() === false && metrixQueue.getSendingQueue() == null)
-					initDataSending();
+			} else {
+				// TODO: add a log here
 			}
 		}
 
-		// This function is called before attempting to send data to set time, check numberOfTries and set SendingQueue
+		// This function is called before attempting to send data in order to check numberOfTries
+		// and set SendingQueue if an attempt should be made
 		function initDataSending() {
 			metrixLogger.debug("initDataSending was called", {"numberOfTries": numberOfTries});
 
-			if (metrixQueue.getMainQueue() != null && metrixQueue.isGoodTimeToSendData()) {
+			if (metrixQueue.getMainQueue() != null && metrixQueue.shouldAttemptSending()) {
 				metrixQueue.setLastDataSendTryTime();
 				if (numberOfTries < 3) {
 					numberOfTries += 1;
+
 					localStorage.setItem(localStorage.ajaxState, ajaxState.start);
 					currentTabAjaxState = ajaxState.start;
+
 					metrixQueue.updateSendingQueue();
-					let sendTime = Utils.getCurrentTime();
-					attemptDataSending(metrixQueue.getSendingQueue(), sendTime)
+					attemptDataSending(metrixQueue.getSendingQueue())
 				} else {
 					numberOfTries = 0;
 				}
 			}
 		}
 
-		function attemptDataSending(values, sendTime) {
+		function attemptDataSending(values) {
 			let http = new XMLHttpRequest();
 			let metrixId = clientId.getMetrixId();
 
-			metrixLogger.info("attemptDataSending called", {"metrixId": metrixId, "session number": metrixSession.getSessionNumber(), "values": values});
+			metrixLogger.info("attemptDataSending called",
+				{
+					"metrixId": metrixId,
+					"session number": metrixSession.getSessionNumber(),
+					"values": values
+				});
 
 			if (metrixId) {
 				http.open("POST", metrixSettingAndMonitoring.urlEvents, true);
@@ -465,76 +487,45 @@ if (typeof MetrixAnalytics === 'undefined') {
 			http.timeout = metrixSettingAndMonitoring.timeOut;
 
 			if (values != null) {
-				if (metrixId) {
-					http.addEventListener("readystatechange", function() {
-						if (this.readyState === 4) {
-							metrixLogger.debug("response received", {"status code": this.status});
+				http.addEventListener("readystatechange", function() {
+					if (this.readyState === 4) {
+						if (this.status >= 200 && this.status <= 500) {
+							numberOfTries = 0;
+							// Update the time of data sending -> is used in isGoodTimeToSendData function
+							metrixQueue.setLastDataSendTime(Utils.getCurrentTime());
+							let shouldRefreshMainQueue = true;
 
-							if (this.status >= 200 && this.status <= 500) {
-								numberOfTries = 0;
-								// Update the time of data sending -> is used in isGoodTimeToSendData function
-								metrixQueue.setLastDataSendTime(sendTime);
-
-								if (this.status < 400){
-									metrixLogger.debug("calling to refresh queues");
-									metrixQueue.refreshQueues();
-								}
-
-							} else {
-								metrixLogger.error("request failed", {"status code": this.status});
-								metrixQueue.removeSendingState();
-								initDataSending();
-							}
-						}
-					});
-					http.send(JSON.stringify(values));
-				} else {
-					let initEvent = values[0];
-					let otherEvents = values.slice(1, values.length);
-					metrixLogger.debug("null metrixId. sending first event to init", {"first event": initEvent, "other events": otherEvents});
-
-					http.addEventListener("readystatechange", function() {
-						if (this.readyState === 4) {
-							metrixLogger.debug("response received", {"status code": this.status});
-
-							if (this.status >= 200 && this.status <= 500) {
-								numberOfTries = 0;
-								// Update the time of data sending -> is used in isGoodTimeToSendData function
-								metrixQueue.setLastDataSendTime(sendTime);
+							if (!metrixId) {
 								try {
 									let receivedValue = JSON.parse(this.responseText);
+									// this should always be true
 									if ('user_id' in receivedValue) {
 										let userId = receivedValue.user_id;
 										clientId.setMetrixId(userId);
-										for (let i = 0; i < otherEvents.length; i++) {
-											otherEvents[i].user_id = userId;
-										}
+
+										// TODO: set user_id for all the events in queue
+									} else {
+										shouldRefreshMainQueue = false;
 									}
-									metrixLogger.debug("response received", {"status code": this.status, "response": receivedValue});
-
 								} catch (e) {
-									metrixLogger.error("error parsing http response", {"status code": this.status, "error": e});
+									metrixLogger.error("error parsing http response", {"error": e});
+									shouldRefreshMainQueue = false;
 								}
-
-								if (this.status < 400){
-									metrixLogger.debug("calling to refresh queues");
-									metrixQueue.refreshQueues();
-								}
-								if (otherEvents.length > 0) {
-									metrixLogger.debug("calling to send other events");
-									// TODO: there is a bug here. If this attempt fails, the so-called "other events" will be lost.
-									attemptDataSending(otherEvents, sendTime);
-								}
-
-							} else {
-								metrixLogger.error("request failed", {"status code": this.status});
-								metrixQueue.removeSendingState();
-								initDataSending();
 							}
+
+							if (this.status < 400 && shouldRefreshMainQueue){
+								metrixQueue.refreshMainQueue();
+							}
+							metrixQueue.removeSendingState();
+
+						} else {
+							metrixLogger.error("request failed", {"status code": this.status});
+							metrixQueue.removeSendingState();
+							initDataSending();
 						}
-					});
-					http.send(JSON.stringify(initEvent));
-				}
+					}
+				});
+				http.send(JSON.stringify(values));
 			}
 		}
 
