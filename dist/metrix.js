@@ -22,10 +22,18 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		const ajaxState = {
-			start: 'start',
-			stop: 'stop',
-			unused: 'unused'
+			START: 'start',
+			STOP: 'stop',
+			UNUSED: 'unused'
 		};
+
+		const metrixEventTypes = {
+			SESSION_START: "session_start",
+			SESSION_STOP: "session_stop",
+			CUSTOM: "custom"
+		};
+
+		const SDK_VERSION_NAME = "0.2.0";
 
 		let MetrixAppId = null;
 		let documentReferrer = null;
@@ -36,7 +44,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let referrer = null;
 		let numberOfTries = 0;
 		let locationPathName = document.location.pathname;
-		let currentTabAjaxState = ajaxState.unused;
+		let currentTabAjaxState = ajaxState.UNUSED;
 		let lastSessionId = null;
 		let lastSessionNumber = null;
 		let browserPageInfo = null;
@@ -72,12 +80,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 		 * not need to be called manually.
 		 */
 		MetrixAnalytics.prototype.initialize = function(options) {
-
 			appInfo = {
-				package: document.location.hostname ? document.location.hostname : document.location.pathname,
-				// TODO: get these values from the user
-				code: 1,
-				version: "1.0"
+				package: options.packageName || document.location.hostname ? document.location.hostname : document.location.pathname,
+				code: options.versionCode || 1,
+				version: options.versionName || "1.0"
 			};
 
 			if (typeof options.uniqueDeviceId === 'string' || options.uniqueDeviceId instanceof String) {
@@ -101,11 +107,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 				"geoInfo": geoInfo,
 				"referrer": referrer
 			});
-
-			// Always assume that Javascript is the culprit of leaving the page
-			// (we'll detect and intercept clicks on links and buttons as best
-			// as possible and override this assumption in these cases):
-			this.javascriptRedirect = true;
 
 			Utils.onDomLoaded(function() {
 				retrieveBrowserData();
@@ -176,9 +177,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 			value.session_id = metrixSession.getSessionId();
 			value.session_num = metrixSession.getSessionNumber();
 			value.event_time = Utils.getFormattedCurrentTime();
+			value.timestamp = Utils.getCurrentTime();
 			let currentTimeMillis = (new Date()).getTime();
 
-			if (eventType !== "session_start") {
+			if (eventType !== metrixEventTypes.SESSION_START) {
 				return value;
 			}
 
@@ -187,7 +189,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 				update_timestamp: currentTimeMillis,
 				referrer_url: referrer
 			};
-			value.sdk_version = "0.1.0";
+
+			value.sdk_version = SDK_VERSION_NAME;
 
 			let connectionInfo = {};
 
@@ -212,12 +215,10 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 			value.device_info = this.userIdentificationInfo();
 
-			appInfo.engine_version = "0.1.0";
 			appInfo.engine_name = "web";
 			value.device_info.android_advertising_id = uniqueDeviceId;
 			value.geo_info = geoInfo;
 			value.app_info = appInfo;
-			value.ip = "0.0.0.0";
 			value.attributes = {
 				tracker_token: trackerToken
 			};
@@ -226,26 +227,26 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixEvent.sessionStop = function() {
-			let value = this.makeBaseEventInfo("session_stop");
+			let value = this.makeBaseEventInfo(metrixEventTypes.SESSION_STOP);
 			value.session_id = lastSessionId;
 			value.session_num = lastSessionNumber;
 			value.duration_millis = metrixSession.getSessionDuration();
-			value.event_type = 'session_stop';
+			value.event_type = metrixEventTypes.SESSION_STOP;
 			return value;
 		};
 
 		metrixEvent.sessionStart = function() {
-			let value = this.makeBaseEventInfo("session_start");
-			value.event_type = 'session_start';
+			let value = this.makeBaseEventInfo(metrixEventTypes.SESSION_START);
+			value.event_type = metrixEventTypes.SESSION_START;
 			return value;
 		};
 
 		metrixEvent.manualTrack = function(customAttributes, customMetrics, customName) {
 			metrixSession.generateNewSessionIfExpired();
 
-			let value = metrixEvent.makeBaseEventInfo("custom");
+			let value = metrixEvent.makeBaseEventInfo(metrixEventTypes.CUSTOM);
 
-			value.event_type = 'custom';
+			value.event_type = metrixEventTypes.CUSTOM;
 			value.slug = customName;
 			value.attributes = customAttributes;
 			value.metrics = customMetrics;
@@ -304,13 +305,16 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.setLastDataSendTryTime = function() {
-			let time = Utils.getCurrentTime();
-			localStorage.setItem(localStorageKeys.lastDataSendTryTime, time);
+			localStorage.setItem(localStorageKeys.lastDataSendTryTime, Utils.getCurrentTime().toString());
 		};
 
 		metrixQueue.breakHeavyQueue = function() {
 			let storedQueue = this.getMainQueue() || [];
-			const eventPriorities = ['custom', 'session_start', 'session_stop'];
+			const eventPriorities = [
+				metrixEventTypes.CUSTOM,
+				metrixEventTypes.SESSION_START,
+				metrixEventTypes.SESSION_STOP
+			];
 
 			if (storedQueue.length > metrixSettingAndMonitoring.localQueueCapacity)
 				this.setMainQueue(refineQueue(storedQueue));
@@ -342,8 +346,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixQueue.removeSendingState = function() {
 			localStorage.removeItem(localStorageKeys.sendingQueue);
-			currentTabAjaxState = ajaxState.stop;
-			localStorage.setItem(localStorageKeys.ajaxState, 'stop');
+			currentTabAjaxState = ajaxState.STOP;
+			localStorage.setItem(localStorageKeys.ajaxState, ajaxState.STOP);
 		};
 
 		// Three factors are considered:
@@ -373,7 +377,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				}
 			}
 
-			return localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.start.toString();
+			return localStorage.getItem(localStorageKeys.ajaxState) !== ajaxState.START;
 		};
 
 		metrixQueue.refreshMainQueue = function() {
@@ -399,7 +403,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 				let firstSessionStartEvent = storedQueue[0];
 
 				// this should never happen
-				if (!firstSessionStartEvent || firstSessionStartEvent.event_type !== "session_start" || firstSessionStartEvent.session_num !== 0) {
+				if (!firstSessionStartEvent || firstSessionStartEvent.event_type !== metrixEventTypes.SESSION_START || firstSessionStartEvent.session_num !== 0) {
 					console.error("Metrix: Invalid event as the starting event found in the queue. Metrix will be reset. Please report this", {"event": firstSessionStartEvent});
 				}
 
@@ -435,8 +439,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 				if (numberOfTries < 3) {
 					numberOfTries += 1;
 
-					localStorage.setItem(localStorage.ajaxState, ajaxState.start);
-					currentTabAjaxState = ajaxState.start;
+					localStorage.setItem(localStorage.ajaxState, ajaxState.START);
+					currentTabAjaxState = ajaxState.START;
 
 					metrixQueue.updateSendingQueue();
 					attemptDataSending(metrixQueue.getSendingQueue())
@@ -525,7 +529,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixSession.updateLastVisitTime = function() {
-			localStorage.setItem(localStorageKeys.lastVisitTime, Utils.getCurrentTime());
+			localStorage.setItem(localStorageKeys.lastVisitTime, Utils.getCurrentTime().toString());
 		};
 
 		metrixSession.getLastVisitTime = function() {
@@ -636,7 +640,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		window.addEventListener("beforeunload", function() {
 			metrixSession.updateSessionDuration();
-			if (currentTabAjaxState !== ajaxState.unused) {
+			if (currentTabAjaxState !== ajaxState.UNUSED) {
 				metrixQueue.removeSendingState();
 			}
 		}, false);
@@ -903,8 +907,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		Utils.getCurrentTime = function() {
-			let d = new Date();
-			return Date.parse(d.toString()) + d.getMilliseconds();
+			return Date.now();
 		};
 
 		Utils.getFormattedCurrentTime = function () {
@@ -1020,7 +1023,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 			}
 		};
 
-		var myTimerVar = setInterval(initDataSending, metrixSettingAndMonitoring.queueUnloadInterval);
+		setInterval(initDataSending, metrixSettingAndMonitoring.queueUnloadInterval);
 
 		return MetrixAnalytics;
 	})(MetrixAnalytics);
