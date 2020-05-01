@@ -277,6 +277,18 @@ if (typeof MetrixAnalytics === 'undefined') {
 			localStorage.setItem(localStorageKeys.sendingQueue, JSON.stringify(newQueue));
 		};
 
+		metrixQueue.updateEventsUserId = function() {
+			let metrixId = clientId.getMetrixId();
+			if (metrixId) {
+				let storedQueue = metrixQueue.getMainQueue() || [];
+				storedQueue.forEach(function (event) {
+					event.user_id = metrixId;
+				});
+
+				metrixQueue.setMainQueue(storedQueue);
+			}
+		};
+
 		metrixQueue.getLastDataSendTime = function() {
 			let time = localStorage.getItem(localStorageKeys.lastDataSendTime);
 			if (time != null) {
@@ -502,8 +514,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 									if ('user_id' in receivedValue) {
 										let userId = receivedValue.user_id;
 										clientId.setMetrixId(userId);
-
-										// TODO: set user_id for all the events in queue
+										metrixQueue.updateEventsUserId()
 									} else {
 										shouldRefreshMainQueue = false;
 									}
