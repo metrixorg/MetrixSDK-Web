@@ -49,6 +49,11 @@ if (typeof MetrixAnalytics === 'undefined') {
 		let lastSessionNumber = null;
 		let browserPageInfo = null;
 		let logEnabled = true;
+		
+		// Considering some problems in previous versions (v0.1.0), we may change non-init events and send them to init endpoint. 
+		// In these cases the event shouldn't be removed from the main queue to be sent again with the correct info.
+		// Ideally, this won't be needed in future.
+		let shouldUpdateMainQueue = true;
 
 		const requestHeaders = {
 			authentication: 'X-Application-Id',
@@ -381,6 +386,8 @@ if (typeof MetrixAnalytics === 'undefined') {
 		};
 
 		metrixQueue.refreshMainQueue = function() {
+			if (shouldUpdateMainQueue == false) return
+			
 			let storedQueue = this.getMainQueue() || [];
 			let storedSendingQueue = this.getSendingQueue() || [];
 
@@ -405,6 +412,12 @@ if (typeof MetrixAnalytics === 'undefined') {
 				// this should never happen
 				if (!firstSessionStartEvent || firstSessionStartEvent.event_type !== metrixEventTypes.SESSION_START || firstSessionStartEvent.session_num !== 0) {
 					console.error("Metrix: Invalid event as the starting event found in the queue. Metrix will be reset. Please report this", {"event": firstSessionStartEvent});
+					shouldUpdateMainQueue = false;
+					firstSessionStartEvent.event_type = metrixEventTypes.SESSION_START;
+					firstSessionStartEvent.session_num = 0;
+					firstSessionStartEvent.event_type_error = true;
+				} else {
+					shouldUpdateMainQueue = true;
 				}
 
 				metrixQueue.setSendingQueue(firstSessionStartEvent);
