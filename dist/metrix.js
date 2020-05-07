@@ -11,6 +11,9 @@ if (typeof MetrixAnalytics === 'undefined') {
 	};
 
 	(function (MetrixAnalytics) {
+
+		const SDK_VERSION_NAME = "0.2.0";
+		
 		const metrixSettingAndMonitoring = {
 			urlEvents: 'https://analytics.metrix.ir/v2/events',
 			urlInit: 'https://analytics.metrix.ir/v2/init',
@@ -32,8 +35,6 @@ if (typeof MetrixAnalytics === 'undefined') {
 			SESSION_STOP: "session_stop",
 			CUSTOM: "custom"
 		};
-
-		const SDK_VERSION_NAME = "0.2.0";
 
 		let MetrixAppId = null;
 		let documentReferrer = null;
@@ -387,7 +388,7 @@ if (typeof MetrixAnalytics === 'undefined') {
 
 		metrixQueue.refreshMainQueue = function() {
 			if (shouldUpdateMainQueue == false) return
-			
+
 			let storedQueue = this.getMainQueue() || [];
 			let storedSendingQueue = this.getSendingQueue() || [];
 
