@@ -55,7 +55,11 @@ function initMetrix(MetrixAnalytics) {
     let logEnabled = true;
     let userAttributes = {};
 
-    let initialized = false;
+    let sessionIdListener = null;
+    let userIdListener = null;
+
+    let userIdListenerCalled = false;
+    let sessionIdListenerCalled = true;
 
     const requestHeaders = {
         authentication: 'X-Application-Id',
@@ -80,6 +84,28 @@ function initMetrix(MetrixAnalytics) {
 
     MetrixAnalytics.prototype.setAppId = function (id) {
         MetrixAppId = id;
+    };
+
+    MetrixAnalytics.prototype.setSessionIdListener = function (listener) {
+        if (typeof listener === "function") {
+            sessionIdListener = listener;
+            let sessionId = metrixSession.getSessionId();
+            if(sessionId && !sessionIdListenerCalled) {
+                sessionIdListenerCalled = true;
+                sessionIdListener(sessionId);
+            }
+        }
+    };
+
+    MetrixAnalytics.prototype.setUserIdListener = function (listener) {
+        if (typeof listener === "function") {
+            userIdListener = listener;
+            let userId = clientId.getMetrixId();
+            if(userId && !userIdListenerCalled) {
+                userIdListenerCalled = true;
+                userIdListener(userId);
+            }
+        }
     };
 
     /**
@@ -461,6 +487,12 @@ function initMetrix(MetrixAnalytics) {
                         if ('userId' in receivedValue) {
                             let userId = receivedValue.userId;
                             clientId.setMetrixId(userId);
+
+                            if (userIdListener && !userIdListenerCalled) {
+                                userIdListenerCalled = true;
+                                userIdListener(userId);
+                            }
+
                         } else {
                             shouldRefreshMainQueue = false;
                         }
@@ -505,6 +537,12 @@ function initMetrix(MetrixAnalytics) {
         }
         metrixSession.resetSessionDuration();
         addToQueue(metrixEvent.sessionStart());
+
+        sessionIdListenerCalled = false;
+        if(sessionIdListener && !sessionIdListenerCalled) {
+            sessionIdListener(this.getSessionId());
+            sessionIdListenerCalled = true;
+        }
     };
 
     metrixSession.updateLastVisitTime = function () {
