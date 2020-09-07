@@ -8,7 +8,7 @@ var MetrixAnalytics = function (options) {
     this.initialize(options);
 };
 
-(function (MetrixAnalytics) {
+function initMetrix(MetrixAnalytics) {
     const metrixSettingAndMonitoring = {
         urlEvents: 'https://analytics.metrix.ir/v3/engagement_event',
         timeOut: 5000,
@@ -87,7 +87,6 @@ var MetrixAnalytics = function (options) {
      * not need to be called manually.
      */
     MetrixAnalytics.prototype.initialize = function (options) {
-        if (initialized) return;
         appInfo = {
             package: options.packageName || document.location.hostname ? document.location.hostname : document.location.pathname,
             code: options.versionCode || 1,
@@ -119,8 +118,6 @@ var MetrixAnalytics = function (options) {
             metrixSession.updateLastVisitTime();
             metrixSession.generateNewSessionIfExpired();
         });
-
-        initialized = true;
     };
 
     MetrixAnalytics.prototype.sendEvent = function (customName, customAttributes) {
@@ -1035,12 +1032,18 @@ var MetrixAnalytics = function (options) {
     setInterval(initDataSending, metrixSettingAndMonitoring.queueUnloadInterval);
 
     return MetrixAnalytics;
-})(MetrixAnalytics);
+}
 
 var metrix = {};
-
+let metrixInitialized = false;
+let metrixInstance;
 metrix.initialize = function (options) {
-    return new MetrixAnalytics(options);
+    if (!metrixInitialized) {
+        metrixInitialized = true;
+        initMetrix(MetrixAnalytics);
+        metrixInstance = new MetrixAnalytics(options);
+    }
+    return metrixInstance;
 }
 
 export default metrix
