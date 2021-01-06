@@ -38,7 +38,7 @@ function initMetrix(MetrixAnalytics) {
         EUR: "EUR"
     };
 
-    const SDK_VERSION_NAME = "0.5.0";
+    const SDK_VERSION_NAME = "0.6.0";
 
     let MetrixAppId = null;
     let documentReferrer = null;
@@ -64,6 +64,8 @@ function initMetrix(MetrixAnalytics) {
     const requestHeaders = {
         authentication: 'X-Application-Id',
         contentType: 'Content-Type',
+        platform: 'MTX-Platform',
+        SDKVersion: 'MTX-SDK-Version',
         ContentTypeValue: 'application/json;charset=UTF-8'
     };
 
@@ -471,6 +473,8 @@ function initMetrix(MetrixAnalytics) {
 
         http.setRequestHeader(requestHeaders.authentication, MetrixAppId);
         http.setRequestHeader(requestHeaders.contentType, requestHeaders.ContentTypeValue);
+        http.setRequestHeader(requestHeaders.platform, "PWA");
+        http.setRequestHeader(requestHeaders.SDKVersion, SDK_VERSION_NAME);
         http.timeout = metrixSettingAndMonitoring.timeOut;
 
         http.addEventListener("readystatechange", function () {
