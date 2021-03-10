@@ -38,7 +38,7 @@ function initMetrix(MetrixAnalytics) {
         EUR: "EUR"
     };
 
-    const SDK_VERSION_NAME = "0.6.0";
+    const SDK_VERSION_NAME = "0.7.0";
 
     let MetrixAppId = null;
     let documentReferrer = null;
