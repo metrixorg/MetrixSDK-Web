@@ -38,12 +38,13 @@ function initMetrix(MetrixAnalytics) {
         EUR: "EUR"
     };
 
-    const SDK_VERSION_NAME = "0.6.0";
+    const SDK_VERSION_NAME = "0.7.0";
 
     let MetrixAppId = null;
     let documentReferrer = null;
     let appInfo = null;
     let uniqueDeviceId = null;
+    let storeName = null;
     let trackerToken = null;
     let referrer = null;
     let numberOfTries = 0;
@@ -127,6 +128,7 @@ function initMetrix(MetrixAnalytics) {
             uniqueDeviceId = '';
         }
 
+        storeName = options.storeName;
         trackerToken = options.trackerToken;
         referrer = Utils.getQueryString(document.location.search);
 
@@ -138,6 +140,7 @@ function initMetrix(MetrixAnalytics) {
             "appInfo": appInfo,
             "uniqueDeviceId": uniqueDeviceId,
             "trackerToken": trackerToken,
+            "storeName": storeName,
             "referrer": referrer
         });
 
@@ -433,13 +436,11 @@ function initMetrix(MetrixAnalytics) {
         } else {
             meta.user = {};
         }
-        if (trackerToken){
-            meta.systemAttr = {
-                "trackerToken": trackerToken
-            }
-        } else {
-            meta.systemAttr = {};
-        }
+        
+        meta.systemAttr = {};
+        if (trackerToken) meta.systemAttr.trackerToken = trackerToken
+        if (storeName) meta.systemAttr.store = storeName
+        
         meta.userAttr = userAttributes;
 
         let connectionInfo = {};
