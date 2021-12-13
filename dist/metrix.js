@@ -38,7 +38,7 @@ function initMetrix(MetrixAnalytics) {
         EUR: "EUR"
     };
 
-    const SDK_VERSION_NAME = "0.7.0";
+    const SDK_VERSION_NAME = "0.8.0";
 
     let MetrixAppId = null;
     let documentReferrer = null;
@@ -153,7 +153,18 @@ function initMetrix(MetrixAnalytics) {
 
     MetrixAnalytics.prototype.sendEvent = function (customName, customAttributes) {
         metrixSession.generateNewSessionIfExpired();
+
+        if(!Utils.isString(customName)) {
+            metrixLogger.error("Metrix, Invalid value was received for event name. The event will be ignored");
+            return
+        }
+
         customAttributes = customAttributes || {};
+
+        if(!metrixEvent.validateAttributes(customAttributes)) {
+            metrixLogger.error("Metrix, Invalid value was received for event attributes. The event will be ignored");
+            return
+        }
 
         let event = metrixEvent.makeBaseEventInfo(metrixEventTypes.CUSTOM);
 
@@ -166,6 +177,22 @@ function initMetrix(MetrixAnalytics) {
 
     MetrixAnalytics.prototype.sendRevenue = function (customName, amount, currency, orderId) {
         metrixSession.generateNewSessionIfExpired();
+        
+        if(!Utils.isString(customName)) {
+            metrixLogger.error("Metrix, Invalid value was received for event name. The event will be ignored");
+            return
+        }
+
+        if(!Utils.isNumber(amount)) {
+            metrixLogger.error("Metrix, Invalid value was received for revenue amount. The event will be ignored");
+            return
+        }
+
+        if(orderId && !Utils.isString(orderId)) {
+            metrixLogger.error("Metrix, Invalid value was received for revenue order id. The event will be ignored");
+            return
+        }
+
         currency = currency || revenueCurrency.IRR;
         if (currency !== revenueCurrency.IRR || currency !== revenueCurrency.EUR || currency !== revenueCurrency.EUR)
             currency = revenueCurrency.IRR;
@@ -218,6 +245,16 @@ function initMetrix(MetrixAnalytics) {
 
     metrixEvent.sessionStart = function () {
         return this.makeBaseEventInfo(metrixEventTypes.SESSION_START);
+    };
+
+    metrixEvent.validateAttributes = function (attributes) {
+        if(!Utils.isObject(attributes)) return false
+    
+        for(var key in attributes) {
+            if(!Utils.isString(key) || !Utils.isString(attributes[key]))  return false
+        }
+
+        return true
     };
 
     let metrixQueue = {};
@@ -1032,6 +1069,18 @@ function initMetrix(MetrixAnalytics) {
             return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
         }
         return false;
+    };
+
+    Utils.isObject = function (param) {
+        return Object.prototype.toString.call(param) === "[object Object]";
+    };
+
+    Utils.isString = function (param) {
+        return typeof param === 'string' || param instanceof String;
+    };
+
+    Utils.isNumber = function (param) {
+        return typeof param === 'number'
     };
 
     let metrixLogger = {};
